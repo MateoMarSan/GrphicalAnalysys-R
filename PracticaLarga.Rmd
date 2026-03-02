@@ -1,0 +1,1162 @@
+---
+title: 'Práctica: Gráficos'
+author: "Mateo Martínez Sanz, Adrián Villalaín Moradillo, Iker Angulo Conde"
+date: "2023-05-03"
+output: html_document
+---
+
+
+* [Primera parte (mapas de calor)][Primera parte (mapas de calor)]
+    + [Apartado a][Apartado a]
+    + [Apartado b][Apartado b]
+    + [Apartado c][Apartado c] 
+    + [Apartado d][Apartado d]
+* [Segunda parte (representaciones de la matriz de correlaciones)][Segunda parte (representaciones de la matriz de correlaciones)]
+* [Tercera parte (gráficos de sectores y gráficos donuts)][Tercera parte (gráficos de sectores y gráficos donuts)]
+* [Cuarta parte (gráficos de barras circulares)][Cuarta parte (gráficos de barras circulares)]
+    + [Apartado 1][Apartado 1]
+    + [Apartado 2][Apartado 2]
+
+## Primera parte (mapas de calor)
+
+### Apartado a
+> Explica qué es un mapa de calor o heatmap. 
+
+Un mapa de calor o heatmap en inglés es una representación gráfica de los datos utilizando colores para indicar el nivel de actividad. Por lo general, se emplean colores más oscuros para indicar una baja actividad y colores más brillantes para indicar una alta actividad.  
+
+Hay muchos esquemas de color diferentes que se pueden utilizar para ilustrar el mapa de calor, cada uno con sus ventajas y desventajas. Los mapas con los colores del arco iris son de uso frecuente, ya que los seres humanos pueden percibir más tonos de color de lo que pueden de gris y esto supuestamente aumentarían la cantidad de detalles perceptibles en la imagen.  
+
+Los mapas de calor trabajan con dos variable categóricas y una variable númerica que será traducido en los colores.  
+
+### Apartado b
+> Uiliza la librería ggplot2 de R para construir varios heatmaps con geom_tile() y geom_raster(). ¿Hay alguna diferencia entre ambas geometrías?
+
+```{r,warning=FALSE}
+library(ggplot2)
+library(hrbrthemes)
+```
+
+
+```{r}
+df<-data.frame(X=rep(LETTERS[1:10],20),Y=rep(paste("var",1:20,sep=""),each=10),Z=runif(200))
+ggplot(df,aes(X,Y,fill=Z)) + geom_tile() + scale_fill_gradient(low="white", high="blue") 
+ggplot(df,aes(X,Y,fill=Z)) + geom_raster() + scale_fill_gradient(low="white", high="blue")  
+```
+
+```{r}
+df2<-data.frame(X=LETTERS[1:20],Y=paste("var", seq(1,20)),Z=runif(400, 0, 5))
+ggplot(df2,aes(X,Y,fill=Z)) + geom_tile() + scale_fill_gradient(low="white", high="darkgreen") 
+ggplot(df2,aes(X,Y,fill=Z)) + geom_raster() + scale_fill_gradient(low="white",high="darkgreen")+
+  scale_x_discrete(expand = c(-0.2, -0.1)) +
+  scale_y_discrete(expand = c(-0.2, -0.1)) +
+  coord_equal()
+```
+
+Como podemos ver, ambos mapas de calor muestran la misma información, pero tienen una apariencia ligeramente diferente debido a las diferencias en las funciones `geom_tile()` y `geom_raster()`, que enunciaré a continuación.   
+
+Ambas funciones pertenecen al paquete ggplot2 y permiten la visualización de los datos en forma de mapa de calor, sin embargo, con la función `geom_rater()` podemos generar mapas de calor más detallados, mientras que con la función `geom_tile()` la dispersión de las cuadrículas delmapa será mas uniforme, como resultado obtenemos un gráfico más homogéneo con cuadr´culas de formas más regulares.  
+A modo de resumen podemos cocluir afirmando que cada función hace una representación en forma de mapa de calor de los mismos datos y la elección de una u otra dependerá del nivel de detalle requerido.  
+
+
+### Apartado c
+> El ejemplo del enunciado se realizó con los datos artificiales del fichero datos-heatmap.Rdata. Realizar este mapa de calor.
+
+```{r}
+load("datos-heatmap.RData")
+```
+
+Observamos que el objeto cargado tiene como nombre data, que será el argumento que pasaremos a la función ggplot para realizar el gráfico con la función `geom_tile()`  
+```{r}
+ggplot(data,aes(X,Y,fill=Z)) + geom_tile() + coord_fixed()
+```
+
+### Apartado d
+> Utilizar los datos de venta de videojuegos (fichero datos-venta-videojuegos.Rdata, infomación al final de este enunciado) para realizar mapas de calor qur consideres interesantes. Además convertirlos en interactivo con la librería plotly.  
+
+```{r,warning=FALSE}
+library(plotly)
+```
+
+Cargamos el objeto correspondiente a los datos de la venta de videojuegos  
+```{r}
+load("datos-venta-videojuegos.RData")
+```
+
+El nombre del objeto es vgsales
+
+```{r}
+genre <- vgsales$Genre
+userCount <- vgsales$User_Count
+platform <- vgsales$Platform
+
+genre <- genre[!is.na(userCount)]
+platform <- platform[!is.na(userCount)]
+userCount <- userCount[!is.na(userCount)]
+
+genreUserCountPlatform <- data.frame(genre,userCount,platform)
+
+salesperyearTratado <- data.frame(plataforma=rep(names(table(platform))[1],12),userCount=tapply(subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$userCount, subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$genre, sum),genero=names(tapply(subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$userCount, subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$genre, sum)),row.names = NULL)
+for (platform1 in names(table(platform))[-1]){
+  eltaaply=tapply(subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform1)$userCount, subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform1)$genre, sum)
+  if (length(eltaaply)==12){
+    salesperyearTratado <- rbind(salesperyearTratado,data.frame(plataforma=rep(platform1,12),userCount=eltaaply,genero=names(eltaaply),row.names = NULL))
+  }
+}
+ggplot(salesperyearTratado, aes(plataforma, genero, fill= userCount)) + 
+  geom_raster()+ scale_fill_gradient(low="white", high="red") 
+```
+
+```{r}
+genre <- vgsales$Genre
+userCount <- vgsales$Global_Sales
+platform <- vgsales$Platform
+
+genre <- genre[!is.na(userCount)]
+platform <- platform[!is.na(userCount)]
+userCount <- userCount[!is.na(userCount)]
+
+genreUserCountPlatform <- data.frame(genre,userCount,platform)
+
+salesperyearTratado <- data.frame(plataforma=rep(names(table(platform))[1],12),userCount=tapply(subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$userCount, subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$genre, sum),genero=names(tapply(subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$userCount, subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform[1])$genre, sum)),row.names = NULL)
+for (platform1 in names(table(platform))[-1]){
+  eltaaply=tapply(subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform1)$userCount, subset(genreUserCountPlatform,genreUserCountPlatform$platform==platform1)$genre, sum)
+  if (length(eltaaply)==12){
+    salesperyearTratado <- rbind(salesperyearTratado,data.frame(plataforma=rep(platform1,12),userCount=eltaaply,genero=names(eltaaply),row.names = NULL))
+  }
+}
+ggplot(salesperyearTratado, aes(plataforma, genero, fill= userCount)) + 
+  geom_raster()+scale_fill_gradient(low="white", high="yellow4") 
+```
+
+## Segunda parte (representaciones de la matriz de correlaciones)
+
+ Se trata de representar las matrices de correlaciones de un conjunto de variables numéricas. R ofrece varias posibilidades.
+
+Formas de obtener repesentaciones de matrices de correlación:
+
+  * Forma 1. A partir de los datos, calcular la matriz de correlaciones de las variables numéricas y representarlas con un mapa de calor utilizando ` geom_tile()` de la librería ggplot2 del estilo del gráfico que se muestra a continuación.
+
+  * Forma 2. La función  `corrplot()`del paquete corrplot . Para mostrar el interés de las funciones de este paquete aplicarlas a los datos del data frame iris.
+
+  * Forma 3. La función  `ggcorr()` del paquete GGally
+
+  * Forma 4. La función `ggcorrplot()`del paquete ggcorrplot
+
+Indagar sobre las funciones anteriores. Explicar las distintas opciones que ofrecen estas funciones y estos paquetes para representar las matrices de correlaciones
+  
+  
+  + geom_tile(), se utiliza para crear mapasde calor pero utilizando ` geom_text` te sale el valor de cada celda, es decir puedes utilizarla para crear la matriz de correlaion.
+  + corrplot(), es un packete que facilita la realizacion de matricesde correlacion, que permite el reordenamiento utomatico de las variables y ayuda a encontrar las correlaciones entre las variables.
+   Ademas proporciona una gran variedad de opciones de trazado en el método de visualización, diseño gráfico, color, leyenda, etiquetas de texto, etc. También proporciona valores p e intervalos de confianza para ayudar a los usuarios a determinar la importancia estadística de las correlaciones.
+
+### Demostracion con iris
+
+Para empezar tiene distintos metodos que vamos a exponer ahora:
+
+Metodo por defecto (circulo):
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris)
+
+```
+
+Metodo por numeros:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,method = 'number')
+
+```
+
+Metodo por colores:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,method = 'color')
+
+```
+
+Metodo shade:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,method = 'shade')
+
+```
+
+Metodo pie:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,method = 'pie')
+
+```
+  
+Metodo por cuadrados:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,method = 'square')
+
+```  
+
+Metodo por elipses:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,method = 'ellipse')
+
+```
+
+Te permite ordenarlo de distintas formas como:
+
+Ordenado con AOE, que es el orden angular de los autovectores:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,order = 'AOE')
+
+```
+
+Ordenado con FPC, que es el orden por el primer componente principal:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,order = 'FPC')
+
+```
+
+Ordenado con hlcust, que es el orden de agrupación jerárquica ascendente (Hay un orden para el descendente pero en este caso no la vamos a ver):
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,order = 'hclust')
+
+```
+
+Ordenado con alphabet, que es el orden alfabetico:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,order = 'alphabet')
+
+```
+
+Ademas de permitirte modificar el tipo de grafico
+
+Por defecto (Completo):
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris)
+
+```
+
+Por abajo:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,type ='lower')
+
+```
+
+Por abajo:
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,type ='upper')
+
+```
+
+Ademas de opciones graficas para mejorar el visualizado de datos:
+
+En el grafico que vamos a ver a continuacion se puede observar como cambiamos el color, se añadaen las etiquetas con los valores y cambiamos el color de las variables: 
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris, addCoef.col = 'black', col = COL2('PiYG'), tl.col='#672F6C')
+
+```
+
+En el grafico que vamos a ver a continuacion se puede observar como cambiamos el color, se añadaen las etiquetas con los valores, cambiamos el color de las etiquetas, cambiamos la posicion de la leyenda ,cambiamos el color de las variables y la posicion del nombre de las variables, ademas del orden y el tipo diseño del grafico:   
+  
+```{r warning=FALSE}
+   library(corrplot)
+   correlacioniris<-cor(iris[1:4])
+   corrplot(correlacioniris,order = 'alphabet',addCoef.col = 'blue4', col = COL1('Oranges'), tl.col='pink',tl.pos = 'd',cl.pos = 'n',method = 'color')
+
+```
+  
+  + ggcorr(), es un paque de que facilita la realizacion de matrices de correlacion, la diferencia es quepuede incluir distos metodos para realizar la matriz de distientas formas, donde si le das las variables que quieres que esten en la matriz, y el te hace la matriz, ademas tiene mas de 20 posibilidades para adecuar el grafico a tus necesidades. 
+  + ggcorrplot(), es un paque de que facilita la realizacion de matrices de correlacion basado en ggplot2, donde si le das las variables que quieres que esten en la matriz, y el te hace la matriz, ademas tiene mas de 20 posibilidades para adecuar el grafico a tus necesidades. 
+
+
+
+Utilizar los datas de ventas de videojuegos (fichero datos-venta-vidojuegos.Rdata) y realizar estas representaciones para las correlaciones de las viarbles numéricas que contiene.
+
+### geom_tile()
+```{r warning=FALSE}
+library(reshape)
+library(ggplot2)
+library(DT)
+load("datos-venta-videojuegos.Rdata")
+datos_videojuegos_num<-as.data.frame(vgsales[6:14])
+datatable(datos_videojuegos_num)
+datos_videojuegos_num[is.na(datos_videojuegos_num)]<-0
+datatable(datos_videojuegos_num)
+correlacion<-cor(datos_videojuegos_num)
+datatable(correlacion)
+melt<-melt(round(correlacion,2))
+datatable(melt)
+
+ggplot(melt, aes(x = X1, y = X2, fill = value)) + geom_tile(color = "black") +geom_text(aes(label = value), color = "white", size = 4) + coord_fixed()
+
+```
+
+
+### corrplot()
+```{r warning=FALSE}
+library(corrplot)
+corrplot(correlacion,method = 'color',addCoef.col = 'black',col = COL2('PiYG'),tl.col = 'black')
+
+```
+
+### ggcorr()
+```{r warning=FALSE}
+library(GGally)
+ggcorr(correlacion,label=TRUE,size = 3,hjust = 0.75)
+```
+
+### ggcorrplot()
+```{r warning=FALSE}
+library(ggcorrplot)
+ggcorrplot(correlacion,lab=TRUE)
+```
+
+## Tercera parte (gráficos de sectores y gráficos donuts)
+```{r,warning = FALSE}
+library(ggplot2)
+library(gridExtra)
+library(ggpubr)
+```
+
+Crea un data frame cuyas clases son "1st","2nd","3rd" y "Crew", y
+añade el número de veces que se repiten con la proporción de estas
+```{r}
+count.data <- data.frame( class = c("1st", "2nd", "3rd", "Crew"),
+  n = c(325, 285, 706, 885), prop = c(14.8, 12.9, 32.1, 40.2)) 
+```
+Ordena las clases de mayor a mejor proporcion. 
+```{r}
+count.data<-count.data[order(count.data$prop, decreasing = T),]
+```
+Añade una variable añade lab.ypos que es la suma acumulada de las proporciones
+menos la mitad de la proporción de cada variable.
+```{r}
+count.data$lab.ypos<- cumsum(count.data$prop) - 0.5*count.data$prop
+```
+Crea un vector caracter con colores.
+```{r}
+mycols <- c("#0073C2FF", "#EFC000FE", "#868686FF", "#CD534CFF")
+```
+
+Crea un gráfico de sectores del data frame "count.data" con la varible de las 
+proporciones, y los sectores corresponden a las clases.
+La línea Geom_bar además crea un borde blanco alredor del gráfico.
+Coord_polar elige el lugar en el circulo donde empieza a colocar los sectores.
+Geom_text genera etiquetas cada sector correspondiente a las proporciones de 
+cada clase en su lugar.
+Scale_fill_manual rellena cada sector del color deseado según mycols y finalmente
+elegimos un tema para el gráfico
+```{r}
+ggplot(count.data, aes(x = "", y = prop, fill = class)) +
+  geom_bar(width = 1, stat = "identity", color = "white") + 
+  coord_polar("y", start = 0)+
+  geom_text(aes(y = lab.ypos, label = prop), color = "white") + 
+  scale_fill_manual(values = mycols) + 
+  theme_void()
+```
+
+APARTADO 2
+
+Creamos un data frame llamado "data" con las categorías A,B y C junto con 
+un vector de llamado "count" con 10,60 y 30
+```{r}
+data <- data.frame(
+  category=c("A", "B", "C"),
+  count=c(10, 60, 30)
+)
+```
+Añade una nueva varible llamada "fraction" que es la proporción de cada count
+```{r}
+data$fraction <- data$count / sum(data$count)
+```
+Añade otra varible llamada ymax con las proporciones acumuladas
+```{r}
+data$ymax <- cumsum(data$fraction)
+```
+Añade otra varible llamada ymin con las proporciones acumuladas hasta la
+categoría anterior
+```{r}
+data$ymin <- c(0, head(data$ymax, n=-1))
+```
+Añade una nueva variable llamada "label position" con la media de ymax e ymin
+```{r}
+data$labelPosition <- (data$ymax + data$ymin) / 2
+```
+Añade una nueva varible llamada "label" que explica en letra la cantidad de 
+cada categoría
+```{r}
+data$label <- paste0(data$category, "\n value: ", data$count)
+```
+Creamos un gráfico con las variable ymax, ymin y las categorías.
+Con geom_text creamos las etiquetas, x controla la posición y size el tamaño.
+Rellenamos el gráfico con la paleta de colores 3  y pintamos las 
+etiquetas con la misma paleta. Con coord_pol elegimos la dirección del gráfico.
+Finalmente elegimos un tema y eleminamos la leyenda.
+```{r}
+ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
+  geom_rect() + 
+  geom_text( x=2, aes(y=labelPosition, label=label, color=category), size=6) +
+  scale_fill_brewer(palette=3) + 
+  scale_color_brewer(palette=3) + 
+  coord_polar(theta="y") +
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+```
+
+APARTADOS 3 y 4
+Hacemos los gráficos que nos piden modificando los datos y aplicando las instrucciones
+ya explicadas con anterioridad.
+```{r}
+coloresPartidos <- c("#778899", "#FF0000", "#0000FF", "#D3D3D3","#EB6109","#672F6C","#00FF00")
+
+datos <-read.table("datos-diputados-congreso-cyl.txt",header=TRUE,sep=",")
+colnames(datos)<-c("partido",1977,1979,1982,1986,1989,1993,1996,2000,2004,2008,2011,2015,2016,"2019A","2019B")
+datos[is.na(datos)]<-0
+
+datos$"p1977" <- (round(datos$"1977" / sum(datos$"1977"),2))
+datos$"p1979" <- (round(datos$"1979" / sum(datos$"1979"),2))
+datos$"p1982" <- (round(datos$"1982" / sum(datos$"1982"),2))
+datos$"p1986" <- (round(datos$"1986" / sum(datos$"1986"),2))
+datos$"p1989" <- (round(datos$"1989" / sum(datos$"1989"),2))
+datos$"p1993" <- (round(datos$"1993" / sum(datos$"1993"),2))
+datos$"p1996" <- (round(datos$"1996" / sum(datos$"1996"),2))
+datos$"p2000" <- (round(datos$"2000" / sum(datos$"2000"),2))
+datos$"p2004" <- (round(datos$"2004" / sum(datos$"2004"),2))
+datos$"p2008" <- (round(datos$"2008" / sum(datos$"2008"),2))
+datos$"p2011" <- (round(datos$"2011" / sum(datos$"2011"),2))
+datos$"p2015" <- (round(datos$"2015" / sum(datos$"2015"),2))
+datos$"p2016" <- (round(datos$"2016" / sum(datos$"2016"),2))
+datos$"p2019A" <- (round(datos$"2019A" / sum(datos$"2019A"),2))
+datos$"p2019B" <- (round(datos$"2019B" / sum(datos$"2019B"),2))
+
+datos
+c<-c("#D3D3D3", "#EB6109", "#672F6C", "#0000FF","#FF0000","#778899","#00FF00")
+l<-ggplot( datos, aes(x = "", y = 'p1977', fill = partido)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  scale_fill_manual(values = c)
+
+leyenda<-get_legend(l)
+
+d<-as.data.frame(datos$partido[datos$'1977'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1977'[datos$'1977'!=0]
+d$p<-datos$'p1977'[datos$'1977'!=0]
+col<-rev(coloresPartidos[datos$'1977'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p77<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none") 
+
+g77<-ggplot( d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1977")
+
+
+
+d<-as.data.frame(datos$partido[datos$'1979'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1979'[datos$'1979'!=0]
+d$p<-datos$'p1979'[datos$'1979'!=0]
+col<-rev(coloresPartidos[datos$'1979'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p79<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g79<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1979")
+
+
+d<-as.data.frame(datos$partido[datos$'1982'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1982'[datos$'1982'!=0]
+d$p<-datos$'p1982'[datos$'1982'!=0]
+col<-rev(coloresPartidos[datos$'1982'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p82<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g82<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1982")
+
+
+
+d<-as.data.frame(datos$partido[datos$'1986'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1986'[datos$'1986'!=0]
+d$p<-datos$'p1986'[datos$'1986'!=0]
+col<-rev(coloresPartidos[datos$'1986'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p86<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+
+g86<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1986")
+
+d<-as.data.frame(datos$partido[datos$'1989'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1989'[datos$'1989'!=0]
+d$p<-datos$'p1989'[datos$'1989'!=0]
+col<-rev(coloresPartidos[datos$'1989'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p89<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g89<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1989")
+
+d<-as.data.frame(datos$partido[datos$'1993'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1993'[datos$'1993'!=0]
+d$p<-datos$'p1993'[datos$'1993'!=0]
+col<-rev(coloresPartidos[datos$'1993'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p93<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g93<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1993")
+
+d<-as.data.frame(datos$partido[datos$'1996'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'1996'[datos$'1996'!=0]
+d$p<-datos$'p1996'[datos$'1996'!=0]
+col<-rev(coloresPartidos[datos$'1996'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p96<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g96<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "1996")
+
+d<-as.data.frame(datos$partido[datos$'2000'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2000'[datos$'2000'!=0]
+d$p<-datos$'p2000'[datos$'2000'!=0]
+col<-rev(coloresPartidos[datos$'2000'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p00<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g00<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2000")
+
+d<-as.data.frame(datos$partido[datos$'2004'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2004'[datos$'2004'!=0]
+d$p<-datos$'p2004'[datos$'2004'!=0]
+col<-rev(coloresPartidos[datos$'2004'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p04<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g04<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2004")
+
+d<-as.data.frame(datos$partido[datos$'2008'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2008'[datos$'2008'!=0]
+d$p<-datos$'2008'[datos$'2008'!=0]
+col<-rev(coloresPartidos[datos$'2008'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p08<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g08<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2008")
+
+d<-as.data.frame(datos$partido[datos$'2011'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2011'[datos$'2011'!=0]
+d$p<-datos$'p2011'[datos$'2011'!=0]
+col<-rev(coloresPartidos[datos$'2011'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p11<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g11<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2011")
+
+d<-as.data.frame(datos$partido[datos$'2015'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2015'[datos$'2015'!=0]
+d$p<-datos$'p2015'[datos$'2015'!=0]
+col<-rev(coloresPartidos[datos$'2015'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p15<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g15<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2015")
+
+d<-as.data.frame(datos$partido[datos$'2016'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2016'[datos$'2016'!=0]
+d$p<-datos$'p2016'[datos$'2016'!=0]
+col<-rev(coloresPartidos[datos$'2016'!=0])
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+col<-c(col[2],col[1],col[3],col[4])
+p16<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g16<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2016")
+
+d<-as.data.frame(datos$partido[datos$'2019A'!=0])
+colnames(d)<-"Partidos"
+d$dip<-datos$'2019A'[datos$'2019A'!=0]
+d$p<-datos$'p2019A'[datos$'2019A'!=0]
+col<-rev(coloresPartidos[datos$'2019A'!=0])
+a<-col[1]
+col<-c(col[2],col[3],col[4],a)
+d$ymax <- cumsum(d$p)
+d$ymin <- c(0, head(d$ymax, n=-1))
+d$labelPosition <- (d$ymax + d$ymin) / 2
+
+p19<-ggplot(d, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Partidos)) +
+  geom_rect() +
+  geom_text( x=2, aes(y=labelPosition, label=dip, color=Partidos, size=9)) +
+  scale_fill_manual(values = col) +
+  scale_color_manual(values = col) +
+  coord_polar(theta="y") + 
+  xlim(c(-1, 4)) + 
+  theme_void() + 
+  theme(legend.position = "none")
+g19<-ggplot(d, aes(x = "", y = p, fill = Partidos)) +
+  geom_bar(width = 1, stat = "identity", color = "white",show.legend = FALSE) +
+  coord_polar("y", start = 0) + 
+  geom_text(aes(label = dip),position = position_stack(vjust = 0.5),color='white') +
+  scale_fill_manual(values = col) +
+  theme_void() + labs(caption = "2019")
+
+
+
+
+graficoSectores<-grid.arrange(g77,g79,g82,g86,g89,g93,g96,g00,g04,g08,g11,g15,g16,g19,
+             top = "Reparto de Diputados en el Congreso de Castilla y León.
+             
+                   Evolucion entre 1977 y 2019",
+             left=leyenda)
+
+graficoDonuts<-grid.arrange(p77,p79,p82,p86,p89,p93,p96,p00,p04,p08,p11,p15,p16,p19,
+             top = "Reparto de Diputados en el Congreso de Castilla y León.
+             
+                   Evolucion entre 1977 y 2019",
+             left=leyenda) 
+
+```
+
+
+## Cuarta parte (gráficos de barras circulares)
+
+### Apartado 1
+
+>Una alternativa a los gráficos de barras tradicionales son los gráficos de barras en coordenadas polares. Utiliza los datos de la variable cut del data frame diamonds para realizar este tipo de gráfico.  
+
+```{r warning=FALSE}
+   library(ggplot2)
+   library(DT)
+   datatable(diamonds)
+   ggplot(diamonds) +geom_bar(mapping = aes(x = cut, fill= cut),show.legend = FALSE,width=1) + coord_polar(theta = "x", direction=1)+ylab(' ')+xlab(' ')
+
+```
+
+### Apartado 2
+
+>En la galería de gráficos de R se encuentra el siguiente código para producir gráficos de barras en coordenadas polares. Para los dos casos siguientes explicar cada una de las líneas. Buscar unos datos adecudados para realizar gráficos de este tipo y realizarlos.  
+
+* Gráfico de barrras agrupadas en coordenadas polares.
+
+```{r,warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Create dataset
+data <- data.frame(
+  individual=paste( "Mister ", seq(1,60), sep=""),
+  group=c( rep('A', 10), rep('B', 30), rep('C', 14), rep('D', 6)) ,
+  value=sample( seq(10,100), 60, replace=T)
+)
+ 
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- 3
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(data$group), ncol(data)) )
+colnames(to_add) <- colnames(data)
+to_add$group <- rep(levels(data$group), each=empty_bar)
+data <- rbind(data, to_add)
+data <- data %>% arrange(group)
+data$id <- seq(1, nrow(data))
+ 
+# Get the name and the y position of each label
+label_data <- data
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data$hjust <- ifelse( angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+ 
+# prepare a data frame for base lines
+base_data <- data %>% 
+  group_by(group) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+ 
+# prepare a data frame for grid (scales)
+grid_data <- base_data
+grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start <- grid_data$start - 1
+grid_data <- grid_data[-1,]
+ 
+# Make the plot
+p <- ggplot(data, aes(x=as.factor(id), y=value, fill=group)) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+  
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.5) +
+  
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour="grey", alpha=1, size=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour="grey", alpha=1, size=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour="grey", alpha=1, size=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour="grey", alpha=1, size=0.3 , inherit.aes=FALSE ) +
+  
+  # Add text showing the value of each 100/75/50/25 lines
+  annotate("text", x = rep(max(data$id),4), y = c(20, 40, 60, 80), label = c("20", "40", "60", "80") , color="grey", size=3 , angle=0, fontface="bold", hjust=1) +
+  
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.5) +
+  ylim(-100,120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() + 
+  geom_text(data=label_data, aes(x=id, y=value+10, label=individual, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) +
+  
+  # Add base line information
+  geom_segment(data=base_data, aes(x = start, y = -5, xend = end, yend = -5), colour = "black", alpha=0.8, size=0.6 , inherit.aes = FALSE )  +
+  geom_text(data=base_data, aes(x = title, y = -18, label=group), hjust=c(1,1,0,0), colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE)
+```
+
+Para comentar este código lo dividiremos en bloques delimitados por donde aparecen los comentarios.  
+1.Las primeras tres líneas cargan las librerías necesarias para el código  previamente instaladas.    
+2.En las siguientes líneas lo que hacemos es crear los datos, las variables del data frame, serán: individual, group y sample  
+3.Establecemos un número de barras vacías para agregar al final de cada grupo,
+posteriormente creamos el objeto to_add, que será un data frame formado por barras vacías y se le asignan los nombres de las variables del objeto data, se modifica la columna de group en el objeto to_add por la repetición de los niveles de la variable grupo cada uno el número de barras vacías indicadas al comienzo del código, en este caso tres, se unen ambos objetos: el conjunto de datos original y el to_ add bajo el nombre data, posteriormente se ordena el conjunto de datos por la variable group y creamos una nueva columna llamada id para etiquetar a cada barra con un número en la secuencia del 1 hasta el número total de filas.    
+4.Creamos el objeto label_data con los datos del objeto data y asignamos el valor del número de filas a una variable, por último calculamos el ángulo y la posición horizontal, comando `hjust` justa para cada barra.  
+5.Preparamos los datos para agregar líneas de base con el objeto base_data agrupamos en funcón de la variable group, calculamos el principio y el final de cada grupo y ponemos en su respectiva posición el título  
+6.Creamos una copia del data frame llamado base_data, trabajado anteriormente, cambiamos la columna llamada end del objeto base_data desplazandolo una fila hacia abajo y sumándole 1, restamos uno a la columna start del objeto original y se lo asignamos a la copia del objeto, eliminamos la primera columna del objeto  
+7.Creamos el gráfico con el objeto data, con la variabloe id como factor, que se ajustan a los valores de value y finalmente rellena con los valores de group, introducimos las barras, ajustados a los valores de value, añadimos los 4 segmentos horizontales en los valores 20,40,60,80 añade un color y un grosor de línea  
+8.Añadimos una etiqueta en las coordenadas marcadas, establece el color de las etiquetas, negrita y el tamaño   
+9.Agrega las barras al gráfico en coordenadas polares y los valores de group para rellenar las barras, indica los límites de los ejes y aplica un tema minimalista al gráfico, convierte el gráfico a coordenadas polares. Posteriormente agrega el texto donde label_data es el objeto usado para las etiquetas.  
+10.Por último agrega una línea base con la información albergada en base_data y agrega texto a la línea base.  
+
+
+
+
+```{r,echo = FALSE,warning = FALSE}
+library(ggplot2)
+suppressMessages(library(dplyr))
+library(tidyr)
+```
+Creamos un data frame con 60 individuos llamados "Mister" y su número
+4 grupos A,B,C y D con 10,30,14 y 6 individuos respectivamente y valores
+aleatorios entre 10 y 100.
+
+```{r}
+data <- data.frame(
+  individual=paste( "Mister ", seq(1,60), sep=""),
+  group=c( rep('A', 10), rep('B', 30), rep('C', 14), rep('D', 6)) ,
+  value=sample( seq(10,100), 60, replace=T)
+)
+```
+Creamos una varible que contenga el 3 ya que tenemos 3 varible
+```{r}
+empty_bar <- 3
+```
+Creamos un data frame con forma de matriz sin rellenar de tamaño 3 por el número de niveles
+```{r}
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(data$group), ncol(data)) )
+```
+Cambiamos los nombres de las columnas por los de los datos
+```{r}
+colnames(to_add) <- colnames(data)
+```
+Creamos una varible dentro de empty to add llamada "group" que clasifica por
+grupos los datos
+```{r}
+to_add$group <- rep(levels(data$group), each=empty_bar)
+```
+Aplica el to_add a todas las columnas de data para ordenarlos
+```{r}
+data <- rbind(data, to_add)
+```
+Junta los datos por grupos
+```{r}
+data <- data %>% arrange(group)
+```
+Genera una varible id diferente para cada usuario correspondiente al numero de
+filas ya con todos ordenados
+```{r}
+data$id <- seq(1, nrow(data))
+```
+
+Crea una copia de los datos llamada "label_data"
+```{r}
+label_data <- data
+```
+Obtiene el numero de de datos
+```{r}
+number_of_bar <- nrow(label_data)
+```
+Calcula el lugar donde cada dato se colocará en el gráfico repartiendo el espacio
+regularmente
+```{r}
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar    
+```
+Clasifica los datos en función de si el angulo es mejor a -90 y lo asocia a una
+variable llamada hjust (ajuste horizontal)
+```{r}
+label_data$hjust <- ifelse( angle < -90, 1, 0)
+```
+Da el angulo a las variable pero en dos mitades de forma que va dos veces de 90
+ a -90
+```{r}
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+```
+Calcula el inicio y el final de cada grupo en posiciones junto con la posicion
+media de los datos para las lineas base del gráfico.
+Summarize obtiene los datos que queremos. Rowwise hace lo mismo para cada grupo.
+Y con mutate calculamos la el nuevo dato title que es donde colocaremos la 
+inicial del grupo más tarde.
+```{r}
+base_data <- data %>% 
+  group_by(group) %>%
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end))) 
+```
+
+Genera un data frame para las scalas del gráfico
+Pasa la información del data frame anterior a grid data
+```{r}
+grid_data <- base_data
+```
+Mueve los datos de la columna en una fila hacia abajo y les suma uno
+```{r]
+grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+```
+Resta 1 en la columnas start
+```{r}
+grid_data$start <- grid_data$start - 1
+```
+Elimina la primera fila
+```{r}
+grid_data <- grid_data[-1,]
+```
+Hacemos el gráfico en una varible llamada p.
+Para eliminar un espacio que se genera en la primera barra pasamos id como factor.
+Con geom_segment generamos las lineas negras por grupos con las cualidades que deseamos.
+Con 'annotate' añadimos los valores 20 40 60 y 80 que se ven en la parte superior
+que nos ayudan a dar magnitud el valor de cada dato.
+Más tarde añadimos las barras exteriores junto con texto indicando a que dato
+corresponde cada barra e indicamos el lugar por el cúal deseamos empezar.
+Para finalizar añadimos las letras indicando cada grupo y las lineas negras que 
+nos clarifican el significado de dichas letras.
+```{r}
+p <- ggplot(data, aes(x=as.factor(id), y=value, fill=group)) +      
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.5) +
+  
+  geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  
+  annotate("text", x = rep(max(data$id),4), y = c(20, 40, 60, 80), label = c("20", "40", "60", "80") , color="grey", size=3 , angle=0, fontface="bold", hjust=1) +
+  
+ geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.5) +
+  ylim(-100,120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() + 
+  geom_text(data=label_data, aes(x=id, y=value+10, label=individual, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) +
+  
+ 
+  geom_segment(data=base_data, aes(x = start, y = -5, xend = end, yend = -5), colour = "black", alpha=0.8, linewidth=0.6 , inherit.aes = FALSE )  +
+  geom_text(data=base_data, aes(x = title, y = -18, label=group), hjust=c(1,1,0,0), colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE)
+
+p
+```
+
+
+Repetimos el gráfico con otros datos
+
+```{r,echo=FALSE,warning=FALSE}
+library(DT)
+```
+```{r,warning=FALSE}
+datatable(diamonds)
+```
+```{r}
+diamantes<-as.data.frame(head(diamonds$color,60))
+colnames(diamantes)<-c("group")
+diamantes$individual<-c(paste( "Diamante", seq(1,60), sep=""))
+diamantes$value<-head((diamonds$carat*100),60)
+diamantes
+
+
+empty_bar <- 3
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(diamantes$group), ncol(diamantes)) )
+colnames(to_add) <- colnames(diamantes)
+to_add$group <- rep(levels(diamantes$group), each=empty_bar)
+diamantes <- rbind(diamantes, to_add)
+diamantes <- head(diamantes,60)
+diamantes <- diamantes %>% arrange(group)
+diamantes$id <- seq(1, nrow(diamantes))
+
+
+label_diamantes <- diamantes
+number_of_bar <- nrow(label_diamantes)
+angle <- 90 - 360 * (label_diamantes$id-0.5) /number_of_bar
+label_diamantes$hjust <- ifelse( angle < -90, 1, 0)
+label_diamantes$angle <- ifelse(angle < -90, angle+180, angle)
+
+base_diamantes <- diamantes %>% 
+  group_by(group) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>%  
+  mutate(title=mean(c(start, end))) 
+
+
+grid_diamantes <- base_diamantes
+grid_diamantes$end <- grid_diamantes$end[ c( nrow(grid_diamantes), 1:nrow(grid_diamantes)-1)] + 1
+grid_diamantes$start <- grid_diamantes$start - 1
+grid_diamantes <- grid_diamantes[-1,]
+
+g<-ggplot(diamantes, aes(x=as.factor(id), y=value, fill=group)) +      
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.5) +
+  
+  geom_segment(data=grid_diamantes, aes(x = end, y = 80, xend = start, yend = 80), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_diamantes, aes(x = end, y = 60, xend = start, yend = 60), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_diamantes, aes(x = end, y = 40, xend = start, yend = 40), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  geom_segment(data=grid_diamantes, aes(x = end, y = 20, xend = start, yend = 20), colour="grey", alpha=1, linewidth=0.3 , inherit.aes=FALSE ) +
+  
+  annotate("text", x = rep(max(diamantes$id),4), y = c(20, 23, 27, 30), label = c("20", "23", "27", "30") , color="grey", size=3 , angle=0, fontface="bold", hjust=1) +
+  
+  geom_bar(aes(x=as.factor(id), y=value, fill=group), stat="identity", alpha=0.5) +
+  ylim(-100,120) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() + 
+  geom_text(data=label_diamantes, aes(x=id, y=value+10, label=individual, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) +
+
+  geom_segment(data = base_diamantes, aes(x = start, y = -5, xend = end, yend = -5), colour = "black", alpha=0.8, linewidth=0.6 , inherit.aes = FALSE )  +
+  geom_text(data = base_diamantes, aes(x = title, y = -18, label=group), hjust=c(1,1,1,1,0,0,0), colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE)
+
+g
+```
